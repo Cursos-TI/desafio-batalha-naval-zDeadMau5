@@ -1,74 +1,141 @@
 #include <stdio.h>
-#include <stdbool.h> // Para usar o tipo de dado bool (true/false) na validação
+#include <stdbool.h> // Para usar o tipo de dado bool (true/false)
 
 // --- Requisitos Não Funcionais: Legibilidade e Manutenção ---
-// Constantes para definir os tamanhos fixos, facilitando futuras alterações.
+// Constantes para tamanhos fixos.
 #define TAMANHO_TABULEIRO 10
 #define TAMANHO_NAVIO 3
+#define NUMERO_DE_NAVIOS 4
 
-// Protótipos das funções para organizar o código
+/**
+ * @brief Enum para definir as orientações possíveis de um navio.
+ * Isso torna o código mais legível do que usar números mágicos (0, 1, 2, 3).
+ */
+typedef enum {
+    HORIZONTAL,
+    VERTICAL,
+    DIAGONAL_PRINCIPAL,  // Diagonal onde linha e coluna aumentam
+    DIAGONAL_SECUNDARIA  // Diagonal onde linha aumenta e coluna diminui
+} Orientacao;
+
+/**
+ * @brief Struct para representar um navio.
+ * Agrupa todas as informações relevantes de um navio em um único tipo de dado.
+ */
+typedef struct {
+    int linha_inicial;
+    int coluna_inicial;
+    Orientacao orientacao;
+} Navio;
+
+// --- Protótipos das Funções ---
 void inicializar_tabuleiro(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO]);
 void exibir_tabuleiro(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO]);
-bool validar_posicionamento(int h_linha, int h_coluna, int v_linha, int v_coluna);
+bool posicionar_navio(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO], Navio navio);
 
+// --- Função Principal ---
 int main() {
-    // --- 1. Represente o Tabuleiro ---
-    // Matriz (array bidimensional) 10x10 para o tabuleiro do jogo.
+    // 1. Criar um Tabuleiro 10x10
     int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO];
-
-    // Inicializa o tabuleiro com 0 (água) em todas as posições.
     inicializar_tabuleiro(tabuleiro);
 
-    // --- 2. Posicione os Navios ---
-    // Coordenadas iniciais definidas diretamente no código, como solicitado.
-    // Lembre-se que em C, os índices de arrays começam em 0.
-    // Linha 2, Coluna 2 (índices 1, 1) para o navio horizontal.
-    int navio_horizontal_linha = 1;
-    int navio_horizontal_coluna = 1;
+    // 2. Posicionar Quatro Navios (coordenadas e orientações definidas no código)
+    Navio navios[NUMERO_DE_NAVIOS] = {
+        {1, 1, HORIZONTAL},         // Navio 1: Horizontal na linha 1, coluna 1
+        {2, 8, VERTICAL},           // Navio 2: Vertical na linha 2, coluna 8
+        {3, 2, DIAGONAL_PRINCIPAL}, // Navio 3: Diagonal principal na linha 3, coluna 2
+        {7, 4, DIAGONAL_SECUNDARIA} // Navio 4: Diagonal secundária na linha 7, coluna 4
+    };
 
-    // Linha 4, Coluna 5 (índices 3, 4) para o navio vertical.
-    int navio_vertical_linha = 3;
-    int navio_vertical_coluna = 4;
-
-    // --- Requisitos Funcionais: Validação de Posições e Sobreposição ---
-    if (validar_posicionamento(navio_horizontal_linha, navio_horizontal_coluna, navio_vertical_linha, navio_vertical_coluna)) {
-        // Se a validação for bem-sucedida, posiciona os navios na matriz.
-        
-        // Posiciona o navio HORIZONTAL (3 posições)
-        // Percorre as colunas a partir da posição inicial.
-        for (int i = 0; i < TAMANHO_NAVIO; i++) {
-            tabuleiro[navio_horizontal_linha][navio_horizontal_coluna + i] = 3;
+    bool todos_posicionados = true;
+    // Laço para posicionar cada navio sequencialmente
+    for (int i = 0; i < NUMERO_DE_NAVIOS; i++) {
+        if (!posicionar_navio(tabuleiro, navios[i])) {
+            printf("ERRO: Falha ao posicionar o navio %d. Verifique limites ou sobreposição.\n", i + 1);
+            todos_posicionados = false;
+            break; // Interrompe se um navio não puder ser posicionado
         }
-
-        // Posiciona o navio VERTICAL (3 posições)
-        // Percorre as linhas a partir da posição inicial.
-        for (int i = 0; i < TAMANHO_NAVIO; i++) {
-            tabuleiro[navio_vertical_linha + i][navio_vertical_coluna] = 3;
-        }
-
-        // --- 3. Exiba o Tabuleiro ---
-        printf("--- Tabuleiro do Batalha Naval (Nível Novato) ---\n");
-        printf("0 = Água | 3 = Navio\n\n");
-        exibir_tabuleiro(tabuleiro);
-
-    } else {
-        // Caso a validação falhe, exibe uma mensagem de erro.
-        printf("ERRO: Posição dos navios é inválida! Verifique os limites do tabuleiro e a sobreposição.\n");
-        return 1; // Retorna 1 para indicar que o programa terminou com erro.
     }
 
-    return 0; // Sucesso
+    // 3. Exibir o Tabuleiro
+    if (todos_posicionados) {
+        printf("--- Tabuleiro do Batalha Naval (Nível Intermediário) ---\n");
+        printf("0 = Água | 3 = Navio\n\n");
+        exibir_tabuleiro(tabuleiro);
+    }
+
+    return 0;
 }
 
 /**
- * @brief Inicializa a matriz do tabuleiro com o valor 0.
+ * @brief Valida e posiciona um único navio no tabuleiro.
+ * Esta função verifica limites e sobreposição ANTES de modificar o tabuleiro.
+ * @param tabuleiro A matriz do jogo.
+ * @param navio A struct contendo os dados do navio a ser posicionado.
+ * @return 'true' se o navio foi posicionado com sucesso, 'false' caso contrário.
+ */
+bool posicionar_navio(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO], Navio navio) {
+    // Array temporário para armazenar as coordenadas que o navio ocupará.
+    int posicoes[TAMANHO_NAVIO][2]; // [i][0] para linha, [i][1] para coluna
+
+    // Calcula as coordenadas para cada parte do navio de acordo com sua orientação
+    for (int i = 0; i < TAMANHO_NAVIO; i++) {
+        switch (navio.orientacao) {
+            case HORIZONTAL:
+                posicoes[i][0] = navio.linha_inicial;
+                posicoes[i][1] = navio.coluna_inicial + i;
+                break;
+            case VERTICAL:
+                posicoes[i][0] = navio.linha_inicial + i;
+                posicoes[i][1] = navio.coluna_inicial;
+                break;
+            case DIAGONAL_PRINCIPAL:
+                posicoes[i][0] = navio.linha_inicial + i;
+                posicoes[i][1] = navio.coluna_inicial + i;
+                break;
+            case DIAGONAL_SECUNDARIA:
+                posicoes[i][0] = navio.linha_inicial + i;
+                posicoes[i][1] = navio.coluna_inicial - i;
+                break;
+        }
+    }
+
+    // --- Validação ---
+    // 1. Verifica se todas as posições calculadas estão dentro dos limites E não estão ocupadas.
+    for (int i = 0; i < TAMANHO_NAVIO; i++) {
+        int linha = posicoes[i][0];
+        int coluna = posicoes[i][1];
+
+        // Validação de limites
+        if (linha < 0 || linha >= TAMANHO_TABULEIRO || coluna < 0 || coluna >= TAMANHO_TABULEIRO) {
+            return false; // Fora do tabuleiro
+        }
+        // Validação de sobreposição
+        if (tabuleiro[linha][coluna] != 0) {
+            return false; // Posição já ocupada por outro navio
+        }
+    }
+
+    // --- Posicionamento ---
+    // Se todas as validações passaram, modifica o tabuleiro.
+    for (int i = 0; i < TAMANHO_NAVIO; i++) {
+        int linha = posicoes[i][0];
+        int coluna = posicoes[i][1];
+        tabuleiro[linha][coluna] = 3;
+    }
+
+    return true; // Navio posicionado com sucesso
+}
+
+
+/**
+ * @brief Inicializa a matriz do tabuleiro com o valor 0 (água).
  * @param tabuleiro A matriz 10x10 a ser inicializada.
- * * --- Documentação: Comentário claro explicando a função. ---
  */
 void inicializar_tabuleiro(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO]) {
     for (int i = 0; i < TAMANHO_TABULEIRO; i++) {
         for (int j = 0; j < TAMANHO_TABULEIRO; j++) {
-            tabuleiro[i][j] = 0; // 0 representa água
+            tabuleiro[i][j] = 0;
         }
     }
 }
@@ -76,54 +143,12 @@ void inicializar_tabuleiro(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO]) 
 /**
  * @brief Exibe o estado atual do tabuleiro no console.
  * @param tabuleiro A matriz 10x10 a ser exibida.
- * * --- Dica: Usa loops aninhados e printf para exibir de forma organizada. ---
  */
 void exibir_tabuleiro(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO]) {
     for (int i = 0; i < TAMANHO_TABULEIRO; i++) {
         for (int j = 0; j < TAMANHO_TABULEIRO; j++) {
-            // Imprime cada elemento com um espaço para melhor visualização
             printf("%d ", tabuleiro[i][j]);
         }
-        printf("\n"); // Pula uma linha ao final de cada linha da matriz
+        printf("\n");
     }
-}
-
-/**
- * @brief Valida se os navios estão dentro dos limites e não se sobrepõem.
- * @param h_linha Linha inicial do navio horizontal.
- * @param h_coluna Coluna inicial do navio horizontal.
- * @param v_linha Linha inicial do navio vertical.
- * @param v_coluna Coluna inicial do navio vertical.
- * @return Retorna 'true' se o posicionamento for válido, e 'false' caso contrário.
- */
-bool validar_posicionamento(int h_linha, int h_coluna, int v_linha, int v_coluna) {
-    // 1. Validação de Limites
-    // Verifica se o navio horizontal cabe no tabuleiro
-    if (h_coluna + TAMANHO_NAVIO > TAMANHO_TABULEIRO) {
-        return false;
-    }
-    // Verifica se o navio vertical cabe no tabuleiro
-    if (v_linha + TAMANHO_NAVIO > TAMANHO_TABULEIRO) {
-        return false;
-    }
-
-    // 2. Validação de Sobreposição (simplificada)
-    // Itera por cada parte de um navio e verifica se a coordenada bate com alguma parte do outro.
-    for (int i = 0; i < TAMANHO_NAVIO; i++) { // Partes do navio horizontal
-        int pos_h_col = h_coluna + i;
-
-        for (int j = 0; j < TAMANHO_NAVIO; j++) { // Partes do navio vertical
-            int pos_v_lin = v_linha + j;
-
-            // Se a linha do navio horizontal for igual a uma das linhas do vertical
-            // E a coluna do navio vertical for igual a uma das colunas do horizontal,
-            // então há uma sobreposição.
-            if (h_linha == pos_v_lin && pos_h_col == v_coluna) {
-                return false; // Sobreposição detectada
-            }
-        }
-    }
-
-    // Se passou por todas as verificações, o posicionamento é válido.
-    return true;
 }
